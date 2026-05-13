@@ -1,0 +1,50 @@
+erDiagram
+    CUSTOMERS {
+        string id PK "VARCHAR(20) - с ведущими нулями"
+        string name "Наименование"
+        string inn "ИНН"
+        string address "Адрес"
+        string phone "Телефон"
+        boolean salesman "Флаг продавец"
+        boolean buyer "Флаг покупатель"
+    }
+
+    ORDERS {
+        int id PK
+        string customer_id FK "Заказчик"
+        string executor_id FK "Исполнитель"
+        int user_id "Кто оформил"
+        datetime order_date
+        string status
+    }
+
+    PRODUCTS {
+        int id PK
+        string name
+        decimal price
+        string description
+    }
+
+    MATERIALS {
+        int id PK
+        string name
+    }
+
+    ORDER_PRODUCTS {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+    }
+
+    PRODUCT_MATERIALS {
+        int product_id PK,FK
+        int material_id PK,FK
+    }
+
+    CUSTOMERS ||--o{ ORDERS : "заказчик"
+    CUSTOMERS ||--o{ ORDERS : "исполнитель"
+    ORDERS ||--|{ ORDER_PRODUCTS : "содержит"
+    PRODUCTS ||--|{ ORDER_PRODUCTS : "входит_в"
+    PRODUCTS ||--o{ PRODUCT_MATERIALS : "состоит_из"
+    MATERIALS ||--o{ PRODUCT_MATERIALS : "используется_в"
