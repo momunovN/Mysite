@@ -1,0 +1,15 @@
+body { font-family: Arial; background: #f0f0f0; display: flex; justify-content: center; margin-top: 50px; }
+.login-form { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.2); width: 400px; text-align: center; }
+.captcha-container { margin: 20px 0; }
+.puzzle, .pool { 
+    display: flex; flex-wrap: wrap; gap: 5px; 
+    justify-content: center; min-height: 220px; 
+    border: 2px dashed #ccc; padding: 10px; border-radius: 8px;
+}
+.piece { 
+    width: 100px; height: 100px; cursor: grab; 
+    border: 2px solid #333; border-radius: 4px;
+    background-size: cover;
+}
+.piece.dragging { opacity: 0.5; border-color: blue; }
+#message { font-weight: bold; margin-top: 10px; }
