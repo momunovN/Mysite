@@ -1,0 +1,49 @@
+CREATE TABLE customers (
+    id VARCHAR(20) PRIMARY KEY,  -- текст с нулями, как в JSON
+    name VARCHAR(255) NOT NULL,
+    inn VARCHAR(50),
+    address TEXT,
+    phone VARCHAR(50),
+    salesman BOOLEAN DEFAULT FALSE,
+    buyer BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(10,2),
+    description TEXT
+);
+
+CREATE TABLE materials (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id VARCHAR(20) NOT NULL,      -- заказчик
+    executor_id VARCHAR(20),               -- исполнитель (может быть тот же customer)
+    user_id INT,                           -- кто оформил заказ
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'new',
+    FOREIGN KEY (customer_id) REFERENCES customers(id),
+    FOREIGN KEY (executor_id) REFERENCES customers(id)
+);
+
+CREATE TABLE order_products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT DEFAULT 1,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE TABLE product_materials (
+    product_id INT NOT NULL,
+    material_id INT NOT NULL,
+    PRIMARY KEY (product_id, material_id),
+    FOREIGN KEY (product_id) REFERENCES products(id),
+    FOREIGN KEY (material_id) REFERENCES materials(id)
+);
