@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Модуль 4 - Авторизация</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Страница входа -->
+    <div id="loginPage">
+      <h1>Авторизация</h1>
+      <div class="form">
+        <input type="text" id="login" placeholder="Логин" required>
+        <input type="password" id="password" placeholder="Пароль" required>
+        
+        <div class="captcha-box">
+          <p>Соберите изображение:</p>
+          <div id="puzzle" class="puzzle"></div>
+          <div id="pool" class="pool"></div>
+        </div>
+
+        <button onclick="loginUser()">Войти</button>
+        <div id="loginMessage"></div>
+      </div>
+    </div>
+
+    <!-- Главная панель -->
+    <div id="mainPage" class="hidden">
+      <header>
+        <h2>Система IT-Обучения Домодедово</h2>
+        <button onclick="logout()">Выйти</button>
+      </header>
+
+      <div id="adminPanel" class="panel hidden">
+        <h3>Панель Администратора</h3>
+        <button onclick="showAddUserForm()">Добавить нового пользователя</button>
+        <div id="usersList"></div>
+      </div>
+
+      <div id="userPanel" class="panel hidden">
+        <h3>Личный кабинет Пользователя</h3>
+        <p>Добро пожаловать! Здесь будет ваш функционал.</p>
+      </div>
+    </div>
+
+    <!-- Форма добавления пользователя (модальное окно) -->
+    <div id="addUserModal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Добавить пользователя</h3>
+        <input type="text" id="newLogin" placeholder="Логин">
+        <input type="password" id="newPassword" placeholder="Пароль">
+        <select id="newRole">
+          <option value="Пользователь">Пользователь</option>
+          <option value="Администратор">Администратор</option>
+        </select>
+        <button onclick="addNewUser()">Добавить</button>
+        <button onclick="closeModal()">Отмена</button>
+        <div id="addMessage"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+.container { max-width: 1100px; margin: 40px auto; padding: 20px; }
+
+h1, h2, h3 { text-align: center; margin-bottom: 20px; }
+
+.form, .panel {
+  background: #1e2937;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+
+input, select, button {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: none;
+}
+
+input, select { background: #334155; color: white; }
+
+button {
+  background: #3b82f6;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover { background: #2563eb; }
+
+.puzzle, .pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 15px;
+  background: #0f172a;
+  border: 2px dashed #64748b;
+  border-radius: 10px;
+  min-height: 160px;
+  margin: 15px 0;
+}
+
+.piece, .slot {
+  width: 120px;
+  height: 120px;
+  background-size: cover;
+  border: 3px solid #475569;
+  border-radius: 8px;
+  cursor: grab;
+}
+
+.slot { background-color: #1e2937; border-style: dashed; }
+
+.hidden { display: none !important; }
+
+.modal {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #1e2937;
+  padding: 25px;
+  border-radius: 12px;
+  width: 400px;
+}
+
+#usersList table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+#usersList th, #usersList td {
+  padding: 10px;
+  border: 1px solid #475569;
+  text-align: left;
+}
+
+let attempts = 0;
+const MAX_ATTEMPTS = 3;
+const correctOrder = [1, 2, 3, 4];
+
+// Инициализация пользователей
+function initUsers() {
+  if (!localStorage.getItem('users')) {
+    const defaultUsers = [
+      { id: 1, login: "admin", password: "admin123", role: "Администратор", blocked: false },
+      { id: 2, login: "user", password: "user123", role: "Пользователь", blocked: false }
+    ];
+    localStorage.setItem('users', JSON.stringify(defaultUsers));
+  }
+}
+
+function getUsers() {
+  return JSON.parse(localStorage.getItem('users')) || [];
+}
+
+function saveUsers(users) {
+  localStorage.setItem('users', JSON.stringify(users));
+}
+
+// Капча
+function initCaptcha() {
+  const puzzle = document.getElementById('puzzle');
+  const pool = document.getElementById('pool');
+  puzzle.innerHTML = ''; pool.innerHTML = '';
+
+  let pieces = [1,2,3,4].sort(() => Math.random() - 0.5);
+
+  pieces.forEach(num => {
+    const piece = document.createElement('div');
+    piece.className = 'piece';
+    piece.draggable = true;
+    piece.dataset.id = num;
+    piece.style.backgroundImage = `url(https://picsum.photos/id/${70+num}/120/120)`;
+    piece.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', num));
+    pool.appendChild(piece);
+  });
+
+  for (let i = 0; i < 4; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.dataset.position = i;
+    slot.addEventListener('dragover', e => e.preventDefault());
+    slot.addEventListener('drop', handleDrop);
+    puzzle.appendChild(slot);
+  }
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  const id = e.dataTransfer.getData('text/plain');
+  const piece = document.querySelector(`.piece[data-id="${id}"]`);
+  const slot = e.currentTarget;
+
+  if (slot.dataset.id) {
+    const oldPiece = document.createElement('div');
+    oldPiece.className = 'piece';
+    oldPiece.draggable = true;
+    oldPiece.dataset.id = slot.dataset.id;
+    oldPiece.style.backgroundImage = slot.style.backgroundImage;
+    oldPiece.addEventListener('dragstart', ev => ev.dataTransfer.setData('text/plain', slot.dataset.id));
+    document.getElementById('pool').appendChild(oldPiece);
+  }
+
+  slot.style.backgroundImage = piece.style.backgroundImage;
+  slot.dataset.id = id;
+  piece.remove();
+}
+
+function checkCaptcha() {
+  const slots = Array.from(document.querySelectorAll('#puzzle .slot'));
+  const order = slots.map(s => parseInt(s.dataset.id || 0));
+  return order.join('') === correctOrder.join('');
+}
+
+// Авторизация
+function loginUser() {
+  const loginInput = document.getElementById('login').value.trim();
+  const passInput = document.getElementById('password').value.trim();
+  const msg = document.getElementById('loginMessage');
+
+  if (!loginInput || !passInput) {
+    msg.innerHTML = 'Заполните все поля!';
+    msg.style.color = 'red';
+    return;
+  }
+
+  if (!checkCaptcha()) {
+    attempts++;
+    msg.innerHTML = `Неверная капча! Попытка ${attempts}/${MAX_ATTEMPTS}`;
+    msg.style.color = 'red';
+    if (attempts >= MAX_ATTEMPTS) blockAccount(loginInput);
+    else setTimeout(initCaptcha, 700);
+    return;
+  }
+
+  const users = getUsers();
+  const user = users.find(u => u.login === loginInput);
+
+  if (!user) {
+    msg.innerHTML = 'Пользователь не найден';
+    msg.style.color = 'red';
+    return;
+  }
+
+  if (user.blocked) {
+    msg.innerHTML = 'Вы заблокированы. Обратитесь к администратору.';
+    msg.style.color = 'red';
+    return;
+  }
+
+  if (user.password !== passInput) {
+    attempts++;
+    msg.innerHTML = `Неверный логин или пароль!<br>Попытка ${attempts}/${MAX_ATTEMPTS}`;
+    msg.style.color = 'red';
+    if (attempts >= MAX_ATTEMPTS) blockAccount(loginInput);
+    else setTimeout(initCaptcha, 700);
+    return;
+  }
+
+  // Успешный вход
+  msg.innerHTML = 'Вы успешно авторизовались!';
+  msg.style.color = 'lime';
+
+  setTimeout(() => {
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('mainPage').classList.remove('hidden');
+
+    if (user.role === "Администратор") {
+      document.getElementById('adminPanel').classList.remove('hidden');
+      renderUsersTable();
+    } else {
+      document.getElementById('userPanel').classList.remove('hidden');
+    }
+  }, 800);
+}
+
+function blockAccount(login) {
+  const users = getUsers();
+  const user = users.find(u => u.login === login);
+  if (user) user.blocked = true;
+  saveUsers(users);
+  document.getElementById('loginMessage').innerHTML = 'Вы заблокированы. Обратитесь к администратору.';
+}
+
+// Админ панель
+function renderUsersTable() {
+  const users = getUsers();
+  let html = `<table><tr><th>Логин</th><th>Роль</th><th>Статус</th><th>Действия</th></tr>`;
+  
+  users.forEach(user => {
+    html += `
+      <tr>
+        <td>${user.login}</td>
+        <td>${user.role}</td>
+        <td>${user.blocked ? '<span style="color:red">Заблокирован</span>' : 'Активен'}</td>
+        <td>
+          <button onclick="toggleBlock(${user.id})">${user.blocked ? 'Разблокировать' : 'Заблокировать'}</button>
+        </td>
+      </tr>`;
+  });
+  html += `</table>`;
+  document.getElementById('usersList').innerHTML = html;
+}
+
+function toggleBlock(id) {
+  const users = getUsers();
+  const user = users.find(u => u.id === id);
+  if (user) user.blocked = !user.blocked;
+  saveUsers(users);
+  renderUsersTable();
+}
+
+function showAddUserForm() {
+  document.getElementById('addUserModal').classList.remove('hidden');
+  document.getElementById('addMessage').innerHTML = '';
+}
+
+function closeModal() {
+  document.getElementById('addUserModal').classList.add('hidden');
+}
+
+function addNewUser() {
+  const login = document.getElementById('newLogin').value.trim();
+  const pass = document.getElementById('newPassword').value.trim();
+  const role = document.getElementById('newRole').value;
+  const msg = document.getElementById('addMessage');
+
+  if (!login || !pass) {
+    msg.innerHTML = 'Заполните логин и пароль!';
+    return;
+  }
+
+  const users = getUsers();
+  if (users.some(u => u.login === login)) {
+    msg.innerHTML = 'Пользователь с таким логином уже существует!';
+    return;
+  }
+
+  const newUser = {
+    id: Date.now(),
+    login,
+    password: pass,
+    role,
+    blocked: false
+  };
+
+  users.push(newUser);
+  saveUsers(users);
+  msg.innerHTML = 'Пользователь успешно добавлен!';
+  renderUsersTable();
+
+  setTimeout(closeModal, 1500);
+}
+
+function logout() {
+  location.reload();
+}
+
+// Запуск
+window.onload = () => {
+  initUsers();
+  initCaptcha();
+};
+
