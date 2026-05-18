@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IT Платформа Домодедово — Модуль 4</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="login-page">
+    <h1>Вход в систему</h1>
+    <div class="login-form">
+      <input type="text" id="username" placeholder="Логин" required>
+      <input type="password" id="password" placeholder="Пароль" required>
+      
+      <div class="captcha-container">
+        <div id="captcha-puzzle" class="puzzle"></div>
+        <div id="captcha-pool" class="pool"></div>
+      </div>
+
+      <button onclick="login()">Войти</button>
+      <div id="message"></div>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header>
+      <h2>IT Обучение • Аэропорт Домодедово</h2>
+      <button onclick="logout()">Выйти</button>
+    </header>
+
+    <div id="admin-panel" class="panel hidden">
+      <h2>Панель Координатора (Админ)</h2>
+      <!-- Здесь можно расширять под модуль 4 -->
+      <p>Расписание • Назначение наставников • Статистика</p>
+    </div>
+
+    <div id="user-panel" class="panel hidden">
+      <h2>Личный кабинет Стажёра</h2>
+      <!-- Здесь можно расширять под модуль 4 -->
+      <p>Мои задания • Посещаемость • Оценки</p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #0f172a, #1e2937);
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+#login-page {
+  max-width: 480px;
+  margin: 80px auto;
+  background: #1e2937;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  text-align: center;
+}
+
+.login-form input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: none;
+  background: #334155;
+  color: white;
+}
+
+.captcha-container {
+  margin: 20px 0;
+}
+
+.slot, .piece {
+  width: 110px;
+  height: 110px;
+  border: 3px solid #475569;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+  cursor: grab;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.slot { background-color: #334155; border-style: dashed; }
+
+.puzzle, .pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  padding: 15px;
+  border: 2px dashed #64748b;
+  border-radius: 12px;
+  background: #0f172a;
+  min-height: 140px;
+}
+
+button {
+  margin-top: 15px;
+  padding: 12px 30px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover { background: #2563eb; }
+
+.panel {
+  max-width: 1000px;
+  margin: 40px auto;
+  padding: 30px;
+  background: #1e2937;
+  border-radius: 16px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  background: #0f172a;
+}
+
+.hidden { display: none !important; }
+
+let attempts = 0;
+const MAX_ATTEMPTS = 3;
+const correctOrder = [1, 2, 3, 4];
+
+// Тестовые аккаунты
+const users = {
+  "admin": { password: "admin123", role: "admin" },
+  "user": { password: "user123", role: "user" }
+};
+
+function initCaptcha() {
+    const puzzle = document.getElementById('captcha-puzzle');
+    const pool = document.getElementById('captcha-pool');
+    
+    puzzle.innerHTML = '';
+    pool.innerHTML = '';
+
+    let pieces = [1, 2, 3, 4].sort(() => Math.random() - 0.5);
+
+    pieces.forEach(num => {
+        const piece = createPiece(num);
+        pool.appendChild(piece);
+    });
+
+    for (let i = 0; i < 4; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'slot';
+        slot.dataset.position = i;
+        slot.addEventListener('dragover', e => e.preventDefault());
+        slot.addEventListener('drop', handleDropOnSlot);
+        puzzle.appendChild(slot);
+    }
+}
+
+function createPiece(num) {
+    const piece = document.createElement('div');
+    piece.className = 'piece';
+    piece.draggable = true;
+    piece.dataset.id = num;
+    piece.style.backgroundImage = `url(https://picsum.photos/id/${60+num}/110/110)`;
+    
+    piece.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', piece.dataset.id);
+        piece.classList.add('dragging');
+    });
+
+    piece.addEventListener('dragend', () => piece.classList.remove('dragging'));
+    return piece;
+}
+
+function handleDropOnSlot(e) {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('text/plain');
+    const draggedPiece = document.querySelector(`.piece[data-id="${id}"]`);
+    if (!draggedPiece) return;
+
+    const targetSlot = e.currentTarget;
+
+    if (targetSlot.dataset.id) {
+        const oldId = targetSlot.dataset.id;
+        const oldPiece = document.querySelector(`.piece[data-id="${oldId}"]`) || createPiece(oldId);
+        document.getElementById('captcha-pool').appendChild(oldPiece);
+    }
+
+    targetSlot.style.backgroundImage = draggedPiece.style.backgroundImage;
+    targetSlot.style.backgroundSize = 'cover';
+    targetSlot.dataset.id = id;
+    draggedPiece.remove();
+}
+
+function makeSlotsDraggable() {
+    document.querySelectorAll('.slot').forEach(slot => {
+        slot.addEventListener('dragstart', e => {
+            if (slot.dataset.id) {
+                e.dataTransfer.setData('text/plain', slot.dataset.id);
+                slot.classList.add('dragging');
+            }
+        });
+    });
+}
+
+function checkCaptcha() {
+    const slots = document.querySelectorAll('#captcha-puzzle .slot');
+    const userOrder = Array.from(slots).map(slot => parseInt(slot.dataset.id || 0));
+    return userOrder.join('') === correctOrder.join('');
+}
+
+function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const msg = document.getElementById('message');
+
+    if (!username || !password) {
+        msg.innerHTML = '❌ Введите логин и пароль';
+        msg.style.color = 'red';
+        return;
+    }
+
+    if (!checkCaptcha()) {
+        attempts++;
+        msg.innerHTML = `❌ Неверная капча! Попытка ${attempts}/${MAX_ATTEMPTS}`;
+        msg.style.color = 'red';
+
+        if (attempts >= MAX_ATTEMPTS) {
+            msg.innerHTML += '<br><strong>Слишком много попыток</strong>';
+            return;
+        }
+        setTimeout(() => { initCaptcha(); makeSlotsDraggable(); }, 800);
+        return;
+    }
+
+    const user = users[username];
+    if (user && user.password === password) {
+        document.getElementById('login-page').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+
+        if (user.role === "admin") {
+            document.getElementById('admin-panel').classList.remove('hidden');
+        } else {
+            document.getElementById('user-panel').classList.remove('hidden');
+        }
+    } else {
+        msg.innerHTML = '❌ Неверный логин или пароль';
+        msg.style.color = 'red';
+    }
+}
+
+function logout() {
+    location.reload();
+}
+
+window.onload = () => {
+    initCaptcha();
+    makeSlotsDraggable();
+};
+
